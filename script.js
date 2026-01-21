@@ -10,134 +10,17 @@ const customIcon = L.divIcon({
     popupAnchor: [0, -42]
 });
 
-// Handle form submission
-document.getElementById('pin-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const title = document.getElementById('title').value;
-    const description = document.getElementById('description').value;
-    const latitude = document.getElementById('latitude').value;
-    const longitude = document.getElementById('longitude').value;
-    const photoInput = document.getElementById('photo');
-
-    if (!latitude || !longitude) {
-        alert('Please select a location on the map');
-        return;
-    }
-
-    if (!title) {
-        alert('Please enter a title for the item');
-        return;
-    }
-
-    // Create a new pin object
-    const newPin = {
-        id: Date.now(),
-        title,
-        description,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        photo: photoInput.files.length > 0 ? URL.createObjectURL(photoInput.files[0]) : null,
-        date: new Date().toLocaleDateString()
-    };
-
-    // Add pin to map
-    addPinToMap(newPin);
-
-    // Add pin to sidebar list
-    addPinToList(newPin);
-
-    // Reset form
-    this.reset();
-    document.getElementById('address').value = '';
-    document.getElementById('photo-name').textContent = 'No file selected';
-    document.getElementById('photo-preview').classList.add('hidden');
-    if (window.currentMarker) {
-        window.map.removeLayer(window.currentMarker);
-        window.currentMarker = null;
-    }
-});
-
-function addPinToMap(pin) {
-    const marker = L.marker([pin.latitude, pin.longitude], { icon: customIcon }).addTo(window.map)
-        .bindPopup(`
-            <div class="pin-popup">
-                <h3 class="font-bold">${pin.title}</h3>
-                ${pin.photo ? `<img src="${pin.photo}" class="w-full h-32 object-cover mb-2 rounded">` : ''}
-                <p class="text-sm">${pin.description || 'No description'}</p>
-                <p class="text-xs text-gray-500 mt-1">Posted: ${pin.date}</p>
-            </div>
-        `);
-
-    // Store marker reference in pin object
-    pin.marker = marker;
-}
-
-function addPinToList(pin) {
-    const pinsContainer = document.getElementById('pins-container');
-
-    const pinElement = document.createElement('div');
-    pinElement.className = 'pin-card bg-white p-4 rounded-lg shadow-md border border-gray-200';
-    pinElement.innerHTML = `
-        <div class="flex gap-4">
-            ${pin.photo ? `
-                <div class="w-24 h-24 flex-shrink-0">
-                    <img src="${pin.photo}" class="w-full h-full object-cover rounded">
-                </div>
-            ` : ''}
-            <div class="flex-1">
-                <h4 class="font-semibold text-lg">${pin.title}</h4>
-                <p class="text-gray-600 text-sm mt-1">${pin.description || 'No description provided'}</p>
-                <div class="flex items-center mt-2 text-xs text-gray-500">
-                    <i data-feather="map-pin" class="w-4 h-4 mr-1"></i>
-                    <span>${pin.latitude.toFixed(4)}, ${pin.longitude.toFixed(4)}</span>
-                </div>
-                <div class="flex items-center mt-1 text-xs text-gray-500">
-                    <i data-feather="calendar" class="w-4 h-4 mr-1"></i>
-                    <span>${pin.date}</span>
-                </div>
-                <button onclick="focusOnPin(${pin.id})" class="mt-2 text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center">
-<i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
-                </button>
-            </div>
-        </div>
-    `;
-
-    pinsContainer.prepend(pinElement);
-    feather.replace();
-}
-
-function focusOnPin(pinId) {
-    // In a real app, you would find the pin by ID and focus on it
-    // This is just a placeholder for the functionality
-    alert(`Focusing on pin ${pinId} would center the map on its location`);
-}
-
-// Sample pins for demo purposes
-const samplePins = [
-    {
-        id: 1,
-        title: "Wooden Chair",
-        description: "Slightly used but in good condition. Free to take!",
-        latitude: 51.505,
-        longitude: -0.09,
-        photo: "http://static.photos/furniture/320x240/1",
-        date: new Date().toLocaleDateString()
-    },
-    {
-        id: 2,
-        title: "Books Collection",
-        description: "Various novels and textbooks. First come first served!",
-        latitude: 51.51,
-        longitude: -0.1,
-        photo: "http://static.photos/education/320x240/2",
-        date: new Date().toLocaleDateString()
-    }
-];
+let currentUser = null;
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     feather.replace();
+
+    // Check config
+    if (!supabase) {
+        console.error('Supabase not initialized. Check config.js');
+        return;
+    }
 
     // Initialize map
     const map = L.map('map').setView([47.3769, 8.5417], 13); // Zurich coordinates
@@ -150,13 +33,13 @@ document.addEventListener('DOMContentLoaded', function () {
         maxZoom: 19
     }).addTo(map);
 
-    // Add sample pins
-    samplePins.forEach(pin => {
-        addPinToMap(pin);
-        addPinToList(pin);
-    });
+    // Setup Auth
+    setupAuth();
 
-    // Map click handler
+    // Fetch and display pins
+    await fetchPins();
+
+    // Map click handler (Only allow pin creation if logged in? Or allow click but warn on submit?)
     map.on('click', async function (e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -208,4 +91,230 @@ document.addEventListener('DOMContentLoaded', function () {
             reader.readAsDataURL(file);
         }
     });
+
+    // Handle form submission
+    document.getElementById('pin-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        if (!currentUser) {
+            alert('Please sign in to add a treasure!');
+            signIn(); // Trigger login
+            return;
+        }
+
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const latitude = document.getElementById('latitude').value;
+        const longitude = document.getElementById('longitude').value;
+        const photoInput = document.getElementById('photo');
+
+        if (!latitude || !longitude) {
+            alert('Please select a location on the map');
+            return;
+        }
+
+        if (!title) {
+            alert('Please enter a title for the item');
+            return;
+        }
+
+        // 1. Upload Photo if exists
+        let photoUrl = null;
+        if (photoInput.files.length > 0) {
+            const file = photoInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${currentUser.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('treasure-photos')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                console.error('Error uploading photo:', uploadError);
+                alert('Failed to upload photo');
+                return;
+            }
+
+            // Get public URL
+            const { data } = supabase.storage
+                .from('treasure-photos')
+                .getPublicUrl(filePath);
+
+            photoUrl = data.publicUrl;
+        }
+
+        // 2. Insert into Database
+        const { error } = await supabase
+            .from('pins')
+            .insert({
+                title,
+                description,
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude),
+                photo_url: photoUrl,
+                user_id: currentUser.id
+            });
+
+        if (error) {
+            console.error('Error adding pin:', error);
+            alert('Failed to add treasure. Please try again.');
+            return;
+        }
+
+        // 3. Success!
+        // Reset form
+        this.reset();
+        document.getElementById('address').value = '';
+        document.getElementById('photo-name').textContent = 'No file selected';
+        document.getElementById('photo-preview').classList.add('hidden');
+        if (window.currentMarker) {
+            window.map.removeLayer(window.currentMarker);
+            window.currentMarker = null;
+        }
+
+        // Refresh pins
+        await fetchPins();
+    });
 });
+
+async function fetchPins() {
+    // Clear list
+    document.getElementById('pins-container').innerHTML = '';
+
+    // Clear map markers (except current selection)
+    window.map.eachLayer((layer) => {
+        if (layer instanceof L.Marker && layer !== window.currentMarker) {
+            window.map.removeLayer(layer);
+        }
+    });
+
+    const { data: pins, error } = await supabase
+        .from('pins')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching pins:', error);
+        return;
+    }
+
+    pins.forEach(pin => {
+        // Adapt pin object to match expected format if needed, but DB columns match.
+        // We just need to ensure 'photo' property maps to 'photo_url' or update helper functions.
+        // Let's create a local object to match helper expectations
+        const displayPin = {
+            id: pin.id,
+            title: pin.title,
+            description: pin.description,
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            photo: pin.photo_url,
+            date: new Date(pin.created_at).toLocaleDateString()
+        };
+
+        addPinToMap(displayPin);
+        addPinToList(displayPin);
+    });
+}
+
+function setupAuth() {
+    const loginBtn = document.getElementById('login-btn');
+    const authSection = document.getElementById('auth-section');
+
+    // Button click
+    loginBtn.addEventListener('click', async () => {
+        if (currentUser) {
+            await supabase.auth.signOut();
+        } else {
+            signIn();
+        }
+    });
+
+    // Listen to state changes
+    supabase.auth.onAuthStateChange((event, session) => {
+        currentUser = session?.user;
+        updateAuthUI();
+    });
+}
+
+async function signIn() {
+    const email = prompt("Enter your email to receive a login link:");
+    if (!email) return;
+
+    const { data, error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+            emailRedirectTo: window.location.href // Redirect back to this page
+        }
+    });
+
+    if (error) {
+        alert('Error sending magic link: ' + error.message);
+    } else {
+        alert('Magic link sent! Check your email to log in.');
+    }
+}
+
+function updateAuthUI() {
+    const loginBtn = document.getElementById('login-btn');
+    if (currentUser) {
+        loginBtn.textContent = 'Sign Out';
+    } else {
+        loginBtn.textContent = 'Sign In';
+    }
+}
+
+function addPinToMap(pin) {
+    const marker = L.marker([pin.latitude, pin.longitude], { icon: customIcon }).addTo(window.map)
+        .bindPopup(`
+            <div class="pin-popup">
+                <h3 class="font-bold">${pin.title}</h3>
+                ${pin.photo ? `<img src="${pin.photo}" class="w-full h-32 object-cover mb-2 rounded">` : ''}
+                <p class="text-sm">${pin.description || 'No description'}</p>
+                <p class="text-xs text-gray-500 mt-1">Posted: ${pin.date}</p>
+            </div>
+        `);
+
+    pin.marker = marker;
+}
+
+function addPinToList(pin) {
+    const pinsContainer = document.getElementById('pins-container');
+    const pinElement = document.createElement('div');
+    pinElement.className = 'pin-card bg-white p-4 rounded-lg shadow-md border border-gray-200';
+    pinElement.innerHTML = `
+        <div class="flex gap-4">
+            ${pin.photo ? `
+                <div class="w-24 h-24 flex-shrink-0">
+                    <img src="${pin.photo}" class="w-full h-full object-cover rounded">
+                </div>
+            ` : ''}
+            <div class="flex-1">
+                <h4 class="font-semibold text-lg">${pin.title}</h4>
+                <p class="text-gray-600 text-sm mt-1">${pin.description || 'No description provided'}</p>
+                <div class="flex items-center mt-2 text-xs text-gray-500">
+                    <i data-feather="map-pin" class="w-4 h-4 mr-1"></i>
+                    <span>${pin.latitude.toFixed(4)}, ${pin.longitude.toFixed(4)}</span>
+                </div>
+                <div class="flex items-center mt-1 text-xs text-gray-500">
+                    <i data-feather="calendar" class="w-4 h-4 mr-1"></i>
+                    <span>${pin.date}</span>
+                </div>
+                <button onclick="focusOnPin(${pin.id})" class="mt-2 text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center">
+<i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
+                </button>
+            </div>
+        </div>
+    `;
+    pinsContainer.append(pinElement); // Append instead of prepend to keep chronological order if fetched desc
+    feather.replace();
+}
+
+function focusOnPin(pinId) {
+    // For now, functionality is simplified. 
+    // In a real implementation with real IDs, we'd look up the pin object or marker.
+    // Since we re-fetch, we'd need to store the markers in a map by ID to easy find them.
+    // For this prototype, we'll keep the alert or simple implementation.
+    alert('Focusing on pin ' + pinId);
+}
