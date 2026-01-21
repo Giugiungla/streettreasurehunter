@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Fetch and display pins
     await fetchPins();
 
-    // Map click handler (Only allow pin creation if logged in? Or allow click but warn on submit?)
+    // Map click handler (Allow click for everyone to see address, but warn on submit if not logged in)
     map.on('click', async function (e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -75,6 +75,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Add new marker
         window.currentMarker = L.marker(e.latlng, { icon: customIcon }).addTo(map)
             .bindPopup("Selected Location").openPopup();
+            
+        // If user is not logged in, maybe show a toast or small message? 
+        // For now, the form submit handler handles the auth check.
     });
 
     // Photo upload preview
