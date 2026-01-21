@@ -1,5 +1,5 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 body {
     font-family: 'Source Sans 3', sans-serif;
     background-color: #AED6D2;
@@ -13,8 +13,9 @@ h2 {
 .font-playfair {
     font-family: 'Playfair Display', serif;
 }
+
 color: #2E2E38;
-}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -23,6 +24,7 @@ color: #2E2E38;
 ::-webkit-scrollbar-track {
     background: #f1f1f1;
 }
+
 ::-webkit-scrollbar-thumb {
     background: #9FA6D8;
     border-radius: 4px;
@@ -31,6 +33,7 @@ color: #2E2E38;
 ::-webkit-scrollbar-thumb:hover {
     background: #F87342;
 }
+
 /* Pin card animation */
 .pin-card {
     transition: all 0.3s ease;
@@ -40,6 +43,7 @@ color: #2E2E38;
     transform: translateY(-4px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
+
 /* Map container custom style */
 #map {
     z-index: 1;
@@ -60,12 +64,15 @@ color: #2E2E38;
     border-color: #4f46e5;
     box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 }
+
 /* Form input focus style */
-input:focus, textarea:focus {
+input:focus,
+textarea:focus {
     outline: none;
     border-color: #F87342;
     box-shadow: 0 0 0 2px rgba(248, 115, 66, 0.2);
 }
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     #map {

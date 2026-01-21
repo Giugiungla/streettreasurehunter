@@ -29,14 +29,14 @@
 
                 <form id="pin-form" class="space-y-4">
                     <div>
-                        <label class="block text-gray-700 mb-2">Location</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="latitude" placeholder="Latitude" class="w-1/2 p-2 border rounded"
-                                readonly>
-                            <input type="text" id="longitude" placeholder="Longitude" class="w-1/2 p-2 border rounded"
-                                readonly>
+                        <label class="block text-gray-700 mb-2">Location (Address)</label>
+                        <div>
+                            <input type="text" id="address" placeholder="Click on map to set address"
+                                class="w-full p-2 border rounded" readonly>
+                            <input type="hidden" id="latitude">
+                            <input type="hidden" id="longitude">
                         </div>
-                        <p class="text-sm text-gray-500 mt-1">Click on the map to set location</p>
+                        <p class="text-sm text-gray-500 mt-1">Click on the map to automatically find the address</p>
                     </div>
 
                     <div>
@@ -94,8 +94,15 @@
             // Choose one of these map providers by uncommenting:
 
             // 1. OpenStreetMap (default)
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            // }).addTo(map);
+
+            // 4. CartoDB Dark Matter
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
             }).addTo(map);
 
             // 2. Mapbox (requires API key)
@@ -103,62 +110,7 @@
             //     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
             //     maxZoom: 18,
             //     id: 'mapbox/streets-v11',
-            //     tileSize: 512,
-            //     zoomOffset: -1,
-            //     accessToken: 'your.mapbox.access.token'
-            // }).addTo(map);
-
-            // 3. Stamen Toner (black and white)
-            // L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}{r}.png', {
-            //     attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.'
-            // }).addTo(map);
-
-            // 4. CartoDB Positron (light theme)
-            // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            //     subdomains: 'abcd',
-            //     maxZoom: 19
-            // }).addTo(map);
-
-            // 5. Esri World Imagery (satellite)
-            // L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            //     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            // }).addTo(map);
-            // Store map instance globally
-            window.map = map;
-
-            // Click handler for map
-            map.on('click', function (e) {
-                document.getElementById('latitude').value = e.latlng.lat.toFixed(6);
-                document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
-
-                // Remove existing marker if any
-                if (window.currentMarker) {
-                    map.removeLayer(window.currentMarker);
-                }
-
-                // Add new marker
-                window.currentMarker = L.marker(e.latlng).addTo(map)
-                    .bindPopup("New treasure location").openPopup();
-            });
-
-            // Photo upload preview
-            document.getElementById('photo').addEventListener('change', function (e) {
-                const file = e.target.files[0];
-                if (file) {
-                    document.getElementById('photo-name').textContent = file.name;
-                    const preview = document.getElementById('preview-image');
-                    const reader = new FileReader();
-                    reader.onload = function (event) {
-                        preview.src = event.target.result;
-                        document.getElementById('photo-preview').classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        });
-    </script>
-    <script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
+            <script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
 </body>
 
 </html>
