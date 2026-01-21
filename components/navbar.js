@@ -12,6 +12,7 @@ class CustomNavbar extends HTMLElement {
           font-family: 'Source Sans 3', sans-serif;
           font-weight: 500;
           font-size: 1.1rem;
+          color: #F87342;
         }
         .nav-title {
             font-family: 'Playfair Display', serif;
@@ -32,7 +33,11 @@ class CustomNavbar extends HTMLElement {
               <i data-feather="map-pin" class="w-10 h-10 text-[#F87342]"></i>
               <a href="index.html" class="nav-title">Street Treasure Hunter</a>
             </div>
-            <div class="pl-14">
+            <div class="flex items-center space-x-6">
+              <div id="auth-section" class="flex items-center space-x-4">
+                <!-- Will be populated by JS -->
+                <button id="login-btn" class="text-sm font-medium hover:text-[#F87342] transition-colors">Sign In</button>
+              </div>
               <a href="about.html" class="nav-link flex items-center space-x-1">
                 <i data-feather="info" class="w-4 h-4"></i>
                 <span>About</span>
