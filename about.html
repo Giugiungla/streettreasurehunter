@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Street Treasure Hunter</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+    <custom-navbar></custom-navbar>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold font-playfair mb-4 text-[#2E2E38]">About Street Treasure Hunter</h1>
+                <div class="w-24 h-1 bg-[#F87342] mx-auto rounded"></div>
+            </div>
+
+            <div class="prose prose-lg mx-auto text-gray-700 space-y-6">
+                <p>
+                    Welcome to <strong>Street Treasure Hunter</strong>, a community-driven platform dedicated to giving
+                    finding a second life for free items in your neighborhood.
+                </p>
+
+                <div class="my-8 rounded-xl overflow-hidden shadow-md">
+                    <img src="https://images.unsplash.com/photo-1591035897819-f4bdf739f446?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                        alt="Treasures on the street" class="w-full h-64 object-cover">
+                    <p class="text-sm text-center text-gray-500 mt-2 italic">One person's trash is another person's
+                        treasure.</p>
+                </div>
+
+                <p>
+                    Have you ever walked down the street and seen a perfectly good chair, a stack of books, or a vintage
+                    lamp left out with a "FREE" sign? We believe these items deserve a new home, not a landfill.
+                </p>
+
+                <p>
+                    Our mission is simple: <strong>Map the treasures. Connect the community. Reduce waste.</strong>
+                </p>
+
+                <div class="bg-[#F0F4F8] p-6 rounded-lg border-l-4 border-[#9FA6D8] mt-8">
+                    <h3 class="font-bold text-xl mb-2 font-playfair">How it works</h3>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>Spot a free item on the street.</li>
+                        <li>Snap a picture and add it to the map.</li>
+                        <li>Help others find it before the trash truck does!</li>
+                    </ul>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <a href="index.html"
+                        class="inline-flex items-center gap-2 bg-[#F87342] hover:bg-[#F2B8A2] text-white font-bold py-3 px-8 rounded-full transition-colors duration-300 shadow-md hover:shadow-lg">
+                        <i data-feather="map"></i> Start Hunting
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <custom-footer></custom-footer>
+
+    <script src="components/navbar.js"></script>
+    <script src="components/footer.js"></script>
+    <script>
+        feather.replace();
+    </script>
+</body>
+
+</html>
