@@ -253,17 +253,21 @@ async function signIn() {
     const email = prompt("Enter your email to receive a login link:");
     if (!email) return;
 
+    console.log('Attempting to sign in with email:', email);
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: window.location.href // Redirect back to this page
+            emailRedirectTo: window.location.href
         }
     });
 
+    console.log('SignIn Response:', { data, error });
+
     if (error) {
-        alert('Error sending magic link: ' + error.message);
+        console.error('SignIn Error:', error);
+        alert('Error sending magic link: ' + error.message + '\n(Check console for details)');
     } else {
-        alert('Magic link sent! Check your email to log in.');
+        alert('Magic link sent to ' + email + '!\nCheck your spam folder.\nIf it doesn\'t arrive, check Supabase Logs.');
     }
 }
 
