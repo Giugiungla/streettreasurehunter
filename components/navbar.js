@@ -35,7 +35,6 @@ class CustomNavbar extends HTMLElement {
             </div>
             <div class="flex items-center space-x-6">
               <div id="auth-section" class="flex items-center space-x-4">
-                <!-- Will be populated by JS -->
                 <button id="login-btn" class="text-sm font-medium hover:text-[#F87342] transition-colors">Sign In</button>
               </div>
               <a href="about.html" class="nav-link flex items-center space-x-1">
@@ -47,6 +46,25 @@ class CustomNavbar extends HTMLElement {
         </div>
       </nav>
     `;
+
+    // Bind methods
+    this.updateAuthUI = this.updateAuthUI.bind(this);
+
+    // Add event listener
+    const btn = this.shadowRoot.getElementById('login-btn');
+    btn.addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent('auth-click', {
+        bubbles: true,
+        composed: true
+      }));
+    });
+  }
+
+  updateAuthUI(user) {
+    const btn = this.shadowRoot.getElementById('login-btn');
+    if (btn) {
+      btn.textContent = user ? 'Sign Out' : 'Sign In';
+    }
   }
 }
 

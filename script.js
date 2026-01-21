@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Add new marker
         window.currentMarker = L.marker(e.latlng, { icon: customIcon }).addTo(map)
             .bindPopup("Selected Location").openPopup();
-            
+
         // If user is not logged in, maybe show a toast or small message? 
         // For now, the form submit handler handles the auth check.
     });
@@ -222,11 +222,12 @@ async function fetchPins() {
 }
 
 function setupAuth() {
-    const loginBtn = document.getElementById('login-btn');
-    const authSection = document.getElementById('auth-section');
+    const navbar = document.querySelector('custom-navbar');
 
-    // Button click
-    loginBtn.addEventListener('click', async () => {
+    if (!navbar) return;
+
+    // Listen for custom event from the component
+    navbar.addEventListener('auth-click', async () => {
         if (currentUser) {
             await supabase.auth.signOut();
         } else {
@@ -239,6 +240,13 @@ function setupAuth() {
         currentUser = session?.user;
         updateAuthUI();
     });
+}
+
+function updateAuthUI() {
+    const navbar = document.querySelector('custom-navbar');
+    if (navbar && navbar.updateAuthUI) {
+        navbar.updateAuthUI(currentUser);
+    }
 }
 
 async function signIn() {
@@ -259,14 +267,7 @@ async function signIn() {
     }
 }
 
-function updateAuthUI() {
-    const loginBtn = document.getElementById('login-btn');
-    if (currentUser) {
-        loginBtn.textContent = 'Sign Out';
-    } else {
-        loginBtn.textContent = 'Sign In';
-    }
-}
+
 
 function addPinToMap(pin) {
     const marker = L.marker([pin.latitude, pin.longitude], { icon: customIcon }).addTo(window.map)
