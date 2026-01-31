@@ -1,7 +1,7 @@
 class CustomNavbar extends HTMLElement {
   connectedCallback() {
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `
+    // Use Light DOM by writing directly to innerHTML (no attachShadow)
+    this.innerHTML = `
       <style>
         .navbar {
           background: linear-gradient(135deg, #CFC8F9 0%, #9FA6D8 100%);
@@ -51,17 +51,24 @@ class CustomNavbar extends HTMLElement {
     this.updateAuthUI = this.updateAuthUI.bind(this);
 
     // Add event listener
-    const btn = this.shadowRoot.getElementById('login-btn');
-    btn.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('auth-click', {
-        bubbles: true,
-        composed: true
-      }));
-    });
+    const btn = this.querySelector('#login-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        this.dispatchEvent(new CustomEvent('auth-click', {
+          bubbles: true,
+          composed: true
+        }));
+      });
+    }
+
+    // Initialize icons using global feather
+    if (window.feather) {
+      window.feather.replace(null, this);
+    }
   }
 
   updateAuthUI(user) {
-    const btn = this.shadowRoot.getElementById('login-btn');
+    const btn = this.querySelector('#login-btn');
     if (btn) {
       btn.textContent = user ? 'Sign Out' : 'Sign In';
     }

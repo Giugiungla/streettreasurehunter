@@ -12,7 +12,6 @@
     <script src="config.js"></script>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,32 +89,33 @@
     <script src="components/navbar.js"></script>
     <script src="components/footer.js"></script>
     <script src="script.js"></script>
-    <script>
-        feather.replace();
+    <script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
 
-        // Initialize map
-        document.addEventListener('DOMContentLoaded', function () {
-            const map = L.map('map').setView([47.3769, 8.5417], 13); // Zurich coordinates
-            // Choose one of these map providers by uncommenting:
-
-            // 1. OpenStreetMap (default)
-            // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            // }).addTo(map);
-
-            // 4. CartoDB Dark Matter
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
-
-            // 2. Mapbox (requires API key)
-            // L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-            //     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-            //     maxZoom: 18,
-            //     id: 'mapbox/streets-v11',
-            <script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
+    <!-- Auth Reminder Modal -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[10000]">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
+                    <i data-feather="user" class="text-[#F87342] h-6 w-6"></i>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-2">Sign in Required</h3>
+                <p class="text-sm text-gray-500 mb-6">
+                    Join our community to pin treasures on the map! You can still browse freely, but you'll need to sign
+                    in to contribute.
+                </p>
+                <div class="flex flex-col gap-3">
+                    <button onclick="document.dispatchEvent(new CustomEvent('trigger-auth')); closeModal('auth-modal')"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#F87342] text-base font-medium text-white hover:bg-[#F2B8A2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F87342] sm:text-sm transition-colors">
+                        Sign In / Sign Up
+                    </button>
+                    <button onclick="closeModal('auth-modal')"
+                        class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm transition-colors">
+                        Maybe Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

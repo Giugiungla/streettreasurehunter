@@ -1,3 +1,4 @@
+
 // Custom Icon Definition
 const customIcon = L.divIcon({
     className: 'custom-div-icon',
@@ -11,20 +12,43 @@ const customIcon = L.divIcon({
 });
 
 let currentUser = null;
+let mapInstance = null;
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', async function () {
     feather.replace();
 
-    // Check config
-    if (!supabase) {
+    // Verify Supabase
+    if (!window.supabaseClient) {
         console.error('Supabase not initialized. Check config.js');
+        alert('System Error: Database connection failed. Please check console.');
         return;
     }
 
     // Initialize map
-    const map = L.map('map').setView([47.3769, 8.5417], 13); // Zurich coordinates
+    initMap();
+
+    // Setup Auth
+    setupAuth();
+
+    // Fetch and display pins
+    await fetchPins();
+
+    // Setup photo preview
+    setupPhotoPreview();
+
+    // Setup Form
+    setupForm();
+});
+
+function initMap() {
+    const mapElement = document.getElementById('map');
+    if (!mapElement) return;
+
+    // Zurich coordinates
+    const map = L.map('map').setView([47.3769, 8.5417], 13);
     window.map = map;
+    mapInstance = map;
 
     // CartoDB Dark Matter Layer
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -33,38 +57,60 @@ document.addEventListener('DOMContentLoaded', async function () {
         maxZoom: 19
     }).addTo(map);
 
-    // Setup Auth
-    setupAuth();
+    // Add Locate Control
+    const locateControl = L.control({ position: 'topright' });
+    locateControl.onAdd = function () {
+        const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        div.innerHTML = `<button style="background-color: white; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Locate Me">
+                           <i data-feather="crosshair" style="width: 16px; height: 16px; color: #333;"></i>
+                         </button>`;
+        div.onclick = function (e) {
+            e.preventDefault();
+            map.locate({ setView: true, maxZoom: 16 });
+        };
+        return div;
+    };
+    locateControl.addTo(map);
 
-    // Fetch and display pins
-    await fetchPins();
+    // Initial feather replace for the control
+    feather.replace();
 
-    // Map click handler (Allow click for everyone to see address, but warn on submit if not logged in)
+    // Map click handler
     map.on('click', async function (e) {
+        // If user is not logged in, show the auth reminder modal
+        if (!currentUser) {
+            openModal('auth-modal');
+        }
+
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
 
         // Set hidden inputs
-        document.getElementById('latitude').value = lat.toFixed(6);
-        document.getElementById('longitude').value = lng.toFixed(6);
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+
+        if (latInput) latInput.value = lat.toFixed(6);
+        if (lngInput) lngInput.value = lng.toFixed(6);
 
         // Show loading state
         const addressInput = document.getElementById('address');
-        addressInput.value = "Finding address...";
+        if (addressInput) addressInput.value = "Finding address...";
 
         // Reverse Geocoding using Nominatim
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await response.json();
 
-            if (data && data.display_name) {
-                addressInput.value = data.display_name;
-            } else {
-                addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            if (addressInput) {
+                if (data && data.display_name) {
+                    addressInput.value = data.display_name;
+                } else {
+                    addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                }
             }
         } catch (error) {
             console.error('Error fetching address:', error);
-            addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            if (addressInput) addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         }
 
         // Remove existing marker if any
@@ -75,33 +121,42 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Add new marker
         window.currentMarker = L.marker(e.latlng, { icon: customIcon }).addTo(map)
             .bindPopup("Selected Location").openPopup();
-
-        // If user is not logged in, maybe show a toast or small message? 
-        // For now, the form submit handler handles the auth check.
     });
+}
 
-    // Photo upload preview
-    document.getElementById('photo').addEventListener('change', function (e) {
+function setupPhotoPreview() {
+    const photoInput = document.getElementById('photo');
+    if (!photoInput) return;
+
+    photoInput.addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (file) {
-            document.getElementById('photo-name').textContent = file.name;
+            const nameEl = document.getElementById('photo-name');
+            if (nameEl) nameEl.textContent = file.name;
+
             const preview = document.getElementById('preview-image');
+            const previewContainer = document.getElementById('photo-preview');
+
             const reader = new FileReader();
             reader.onload = function (event) {
-                preview.src = event.target.result;
-                document.getElementById('photo-preview').classList.remove('hidden');
+                if (preview) preview.src = event.target.result;
+                if (previewContainer) previewContainer.classList.remove('hidden');
             };
             reader.readAsDataURL(file);
         }
     });
+}
+
+function setupForm() {
+    const form = document.getElementById('pin-form');
+    if (!form) return;
 
     // Handle form submission
-    document.getElementById('pin-form').addEventListener('submit', async function (e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         if (!currentUser) {
-            alert('Please sign in to add a treasure!');
-            signIn(); // Trigger login
+            openModal('auth-modal');
             return;
         }
 
@@ -121,91 +176,128 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
 
-        // 1. Upload Photo if exists
-        let photoUrl = null;
-        if (photoInput.files.length > 0) {
-            const file = photoInput.files[0];
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
-            const filePath = `${currentUser.id}/${fileName}`;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn ? submitBtn.innerHTML : 'Pin This Treasure';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i data-feather="loader" class="animate-spin"></i> Posting...';
+            feather.replace();
+        }
 
-            const { error: uploadError } = await supabase.storage
-                .from('treasure-photos')
-                .upload(filePath, file);
+        try {
+            // 1. Upload Photo if exists
+            let photoUrl = null;
+            if (photoInput.files.length > 0) {
+                const file = photoInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+                const filePath = `${currentUser.id}/${fileName}`;
 
-            if (uploadError) {
-                console.error('Error uploading photo:', uploadError);
-                alert('Failed to upload photo');
-                return;
+                const { error: uploadError } = await window.supabaseClient.storage
+                    .from('treasure-photos')
+                    .upload(filePath, file);
+
+                if (uploadError) {
+                    throw new Error('Failed to upload photo: ' + uploadError.message);
+                }
+
+                // Get public URL
+                const { data } = window.supabaseClient.storage
+                    .from('treasure-photos')
+                    .getPublicUrl(filePath);
+
+                photoUrl = data.publicUrl;
             }
 
-            // Get public URL
-            const { data } = supabase.storage
-                .from('treasure-photos')
-                .getPublicUrl(filePath);
+            // 2. Insert into Database
+            const { error } = await window.supabaseClient
+                .from('pins')
+                .insert({
+                    title,
+                    description,
+                    latitude: parseFloat(latitude),
+                    longitude: parseFloat(longitude),
+                    photo_url: photoUrl,
+                    user_id: currentUser.id
+                });
 
-            photoUrl = data.publicUrl;
-        }
+            if (error) {
+                throw error;
+            }
 
-        // 2. Insert into Database
-        const { error } = await supabase
-            .from('pins')
-            .insert({
-                title,
-                description,
-                latitude: parseFloat(latitude),
-                longitude: parseFloat(longitude),
-                photo_url: photoUrl,
-                user_id: currentUser.id
-            });
+            // 3. Success!
+            // Reset form
+            this.reset();
+            const addressInput = document.getElementById('address');
+            if (addressInput) addressInput.value = '';
 
-        if (error) {
+            const photoName = document.getElementById('photo-name');
+            if (photoName) photoName.textContent = 'No file selected';
+
+            const photoPreview = document.getElementById('photo-preview');
+            if (photoPreview) photoPreview.classList.add('hidden');
+
+            if (window.currentMarker) {
+                window.map.removeLayer(window.currentMarker);
+                window.currentMarker = null;
+            }
+
+            // Refresh pins
+            await fetchPins();
+
+        } catch (error) {
             console.error('Error adding pin:', error);
-            alert('Failed to add treasure. Please try again.');
-            return;
+            alert(error.message || 'Failed to add treasure. Please try again.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                feather.replace();
+            }
         }
-
-        // 3. Success!
-        // Reset form
-        this.reset();
-        document.getElementById('address').value = '';
-        document.getElementById('photo-name').textContent = 'No file selected';
-        document.getElementById('photo-preview').classList.add('hidden');
-        if (window.currentMarker) {
-            window.map.removeLayer(window.currentMarker);
-            window.currentMarker = null;
-        }
-
-        // Refresh pins
-        await fetchPins();
     });
-});
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 async function fetchPins() {
+    const container = document.getElementById('pins-container');
+    if (!container) return;
+
     // Clear list
-    document.getElementById('pins-container').innerHTML = '';
+    container.innerHTML = '';
 
     // Clear map markers (except current selection)
-    window.map.eachLayer((layer) => {
-        if (layer instanceof L.Marker && layer !== window.currentMarker) {
-            window.map.removeLayer(layer);
-        }
-    });
+    if (window.map) {
+        window.map.eachLayer((layer) => {
+            if (layer instanceof L.Marker && layer !== window.currentMarker) {
+                window.map.removeLayer(layer);
+            }
+        });
+    }
 
-    const { data: pins, error } = await supabase
+    const { data: pins, error } = await window.supabaseClient
         .from('pins')
         .select('*')
         .order('created_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching pins:', error);
+        container.innerHTML = '<p class="text-center text-gray-500">Failed to load treasures.</p>';
+        return;
+    }
+
+    if (pins.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500">No treasures found yet. Be the first to pin one!</p>';
         return;
     }
 
     pins.forEach(pin => {
-        // Adapt pin object to match expected format if needed, but DB columns match.
-        // We just need to ensure 'photo' property maps to 'photo_url' or update helper functions.
-        // Let's create a local object to match helper expectations
         const displayPin = {
             id: pin.id,
             title: pin.title,
@@ -224,19 +316,24 @@ async function fetchPins() {
 function setupAuth() {
     const navbar = document.querySelector('custom-navbar');
 
-    if (!navbar) return;
+    if (navbar) {
+        // Listen for custom event from the component
+        navbar.addEventListener('auth-click', async () => {
+            if (currentUser) {
+                await window.supabaseClient.auth.signOut();
+            } else {
+                signIn();
+            }
+        });
+    }
 
-    // Listen for custom event from the component
-    navbar.addEventListener('auth-click', async () => {
-        if (currentUser) {
-            await supabase.auth.signOut();
-        } else {
-            signIn();
-        }
+    // Listen for global trigger-auth event (from modal)
+    document.addEventListener('trigger-auth', () => {
+        signIn();
     });
 
     // Listen to state changes
-    supabase.auth.onAuthStateChange((event, session) => {
+    window.supabaseClient.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user;
         updateAuthUI();
     });
@@ -253,76 +350,119 @@ async function signIn() {
     const email = prompt("Enter your email to receive a login link:");
     if (!email) return;
 
-    console.log('Attempting to sign in with email:', email);
-    const { data, error } = await supabase.auth.signInWithOtp({
+    // console.log('Attempting to sign in with email:', email);
+    const { data, error } = await window.supabaseClient.auth.signInWithOtp({
         email: email,
         options: {
             emailRedirectTo: window.location.href
         }
     });
 
-    console.log('SignIn Response:', { data, error });
+    // console.log('SignIn Response:', { data, error });
 
     if (error) {
         console.error('SignIn Error:', error);
-        alert('Error sending magic link: ' + error.message + '\n(Check console for details)');
+        alert('Error sending magic link: ' + error.message);
     } else {
-        alert('Magic link sent to ' + email + '!\nCheck your spam folder.\nIf it doesn\'t arrive, check Supabase Logs.');
+        alert('Magic link sent to ' + email + '!\nCheck your spam folder.');
     }
 }
 
+// Modal Functions
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        feather.replace();
+    }
+}
 
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function (event) {
+    const modal = document.getElementById('auth-modal');
+    if (event.target == modal) {
+        closeModal('auth-modal');
+    }
+}
 
 function addPinToMap(pin) {
+    if (!window.map) return;
+
+    // XSS Prevention: Escape content before putting in HTML string
+    const safeTitle = escapeHtml(pin.title);
+    const safeDesc = escapeHtml(pin.description || 'No description');
+    const safeDate = escapeHtml(pin.date);
+
+    // Securely create popup content
+    const popupContent = `
+        <div class="pin-popup">
+            <h3 class="font-bold">${safeTitle}</h3>
+            ${pin.photo ? `<img src="${pin.photo}" class="w-full h-32 object-cover mb-2 rounded" alt="Treasure photo">` : ''}
+            <p class="text-sm">${safeDesc}</p>
+            <p class="text-xs text-gray-500 mt-1">Posted: ${safeDate}</p>
+        </div>
+    `;
+
     const marker = L.marker([pin.latitude, pin.longitude], { icon: customIcon }).addTo(window.map)
-        .bindPopup(`
-            <div class="pin-popup">
-                <h3 class="font-bold">${pin.title}</h3>
-                ${pin.photo ? `<img src="${pin.photo}" class="w-full h-32 object-cover mb-2 rounded">` : ''}
-                <p class="text-sm">${pin.description || 'No description'}</p>
-                <p class="text-xs text-gray-500 mt-1">Posted: ${pin.date}</p>
-            </div>
-        `);
+        .bindPopup(popupContent);
 
     pin.marker = marker;
 }
 
 function addPinToList(pin) {
     const pinsContainer = document.getElementById('pins-container');
+    if (!pinsContainer) return;
+
+    const safeTitle = escapeHtml(pin.title);
+    const safeDesc = escapeHtml(pin.description || 'No description provided');
+    const safeDate = escapeHtml(pin.date);
+
     const pinElement = document.createElement('div');
     pinElement.className = 'pin-card bg-white p-4 rounded-lg shadow-md border border-gray-200';
     pinElement.innerHTML = `
         <div class="flex gap-4">
             ${pin.photo ? `
                 <div class="w-24 h-24 flex-shrink-0">
-                    <img src="${pin.photo}" class="w-full h-full object-cover rounded">
+                    <img src="${pin.photo}" class="w-full h-full object-cover rounded" alt="Treasure photo">
                 </div>
             ` : ''}
             <div class="flex-1">
-                <h4 class="font-semibold text-lg">${pin.title}</h4>
-                <p class="text-gray-600 text-sm mt-1">${pin.description || 'No description provided'}</p>
+                <h4 class="font-semibold text-lg">${safeTitle}</h4>
+                <p class="text-gray-600 text-sm mt-1">${safeDesc}</p>
                 <div class="flex items-center mt-2 text-xs text-gray-500">
                     <i data-feather="map-pin" class="w-4 h-4 mr-1"></i>
                     <span>${pin.latitude.toFixed(4)}, ${pin.longitude.toFixed(4)}</span>
                 </div>
                 <div class="flex items-center mt-1 text-xs text-gray-500">
                     <i data-feather="calendar" class="w-4 h-4 mr-1"></i>
-                    <span>${pin.date}</span>
+                    <span>${safeDate}</span>
                 </div>
                 <button onclick="focusOnPin(${pin.id})" class="mt-2 text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center">
-<i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
+                    <i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
                 </button>
             </div>
         </div>
     `;
-    pinsContainer.append(pinElement); // Append instead of prepend to keep chronological order if fetched desc
+    pinsContainer.append(pinElement);
     feather.replace();
 }
 
-function focusOnPin(pinId) {
-    // For now, functionality is simplified. 
-    // In a real implementation with real IDs, we'd look up the pin object or marker.
-    // Since we re-fetch, we'd need to store the markers in a map by ID to easy find them.
-    // For this prototype, we'll keep the alert or simple implementation.
-    alert('Focusing on pin ' + pinId);
+// Make globally available
+window.focusOnPin = function (pinId) {
+    // In a real app we'd map ID to marker. For now just alert.
+    alert('Focusing logic would go here for pin: ' + pinId);
+    // Ideally:
+    // const marker = markersMap[pinId];
+    // if(marker) map.setView(marker.getLatLng(), 15); marker.openPopup();
 }
+window.openModal = openModal;
+window.closeModal = closeModal;

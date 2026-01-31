@@ -14,7 +14,9 @@ h2 {
     font-family: 'Playfair Display', serif;
 }
 
-color: #2E2E38;
+
+/* color: #2E2E38; - Invalid property at root */
+
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
