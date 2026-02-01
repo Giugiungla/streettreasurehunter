@@ -34,6 +34,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Fetch and display pins
     await fetchPins();
 
+    // Subscribe to Realtime Changes (New, Delete, Update)
+    window.supabaseClient
+        .channel('public:pins')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pins' }, (payload) => {
+            console.log('Realtime change detected:', payload);
+            fetchPins(); // Refresh to show/hide pins for everyone
+        })
+        .subscribe();
+
     // Setup photo preview
     setupPhotoPreview();
 
@@ -275,21 +284,6 @@ async function fetchPins() {
     const container = document.getElementById('pins-container');
     if (!container) return;
 
-    // Clear list
-    container.innerHTML = '';
-
-    // Reset marker cache
-    window.pinMarkers = {};
-
-    // Clear map markers (except current selection)
-    if (window.map) {
-        window.map.eachLayer((layer) => {
-            if (layer instanceof L.Marker && layer !== window.currentMarker) {
-                window.map.removeLayer(layer);
-            }
-        });
-    }
-
     const { data: pins, error } = await window.supabaseClient
         .from('pins')
         .select('*')
@@ -299,6 +293,18 @@ async function fetchPins() {
         console.error('Error fetching pins:', error);
         container.innerHTML = '<p class="text-center text-gray-500">Failed to load treasures.</p>';
         return;
+    }
+
+    // Clear list and markers ONLY after we successfully got new data
+    // This prevents race conditions where multiple rapid calls (init + realtime) cause duplication
+    container.innerHTML = '';
+    window.pinMarkers = {};
+    if (window.map) {
+        window.map.eachLayer((layer) => {
+            if (layer instanceof L.Marker && layer !== window.currentMarker) {
+                window.map.removeLayer(layer);
+            }
+        });
     }
 
     if (pins.length === 0) {
