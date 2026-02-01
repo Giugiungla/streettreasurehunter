@@ -25,6 +25,10 @@ class CustomNavbar extends HTMLElement {
         .nav-link:hover {
           color: #F87342;
         }
+        /* Default hidden */
+        #auth-section {
+            display: none;
+        }
       </style>
       <nav class="navbar shadow-lg">
         <div class="container mx-auto px-12 py-8">
@@ -66,12 +70,11 @@ class CustomNavbar extends HTMLElement {
       window.feather.replace(null, this);
     }
 
-    // Explicitly check for show-auth attribute
-    // Only show login button if the tag has show-auth="true" (e.g. on index.html)
-    if (!this.hasAttribute('show-auth')) {
+    // If explicit attribute exists, show the auth section
+    if (this.hasAttribute('show-auth')) {
       const authSection = this.querySelector('#auth-section');
       if (authSection) {
-        authSection.remove();
+        authSection.style.display = 'flex';
       }
     }
   }
