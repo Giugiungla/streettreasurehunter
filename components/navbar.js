@@ -65,6 +65,15 @@ class CustomNavbar extends HTMLElement {
     if (window.feather) {
       window.feather.replace(null, this);
     }
+
+    // Hide auth section if not on index.html
+    const isIndex = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || window.location.pathname === '/';
+    if (!isIndex) {
+      const authSection = this.querySelector('#auth-section');
+      if (authSection) {
+        authSection.style.display = 'none';
+      }
+    }
   }
 
   updateAuthUI(user) {
