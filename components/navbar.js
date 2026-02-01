@@ -71,12 +71,12 @@ class CustomNavbar extends HTMLElement {
     }
 
     // If explicit attribute exists, show the auth section
-    //if (this.hasAttribute('show-auth')) {
-    //  const authSection = this.querySelector('#auth-section');
-    //  if (authSection) {
-    //    authSection.style.display = 'flex';
-    //  }
-    //}
+    if (this.hasAttribute('show-auth')) {
+      const authSection = this.querySelector('#auth-section');
+      if (authSection) {
+        authSection.style.display = 'flex';
+      }
+    }
   }
 
   updateAuthUI(user) {
