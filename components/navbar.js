@@ -66,12 +66,12 @@ class CustomNavbar extends HTMLElement {
       window.feather.replace(null, this);
     }
 
-    // Hide auth section if not on index.html
-    const isIndex = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || window.location.pathname === '/';
-    if (!isIndex) {
+    // Explicitly check for show-auth attribute
+    // Only show login button if the tag has show-auth="true" (e.g. on index.html)
+    if (!this.hasAttribute('show-auth')) {
       const authSection = this.querySelector('#auth-section');
       if (authSection) {
-        authSection.style.display = 'none';
+        authSection.remove();
       }
     }
   }
