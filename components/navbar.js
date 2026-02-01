@@ -29,6 +29,10 @@ class CustomNavbar extends HTMLElement {
         #auth-section {
             display: none;
         }
+        /* Show if host has attribute (Global CSS since Light DOM) */
+        custom-navbar[show-auth="true"] #auth-section {
+            display: flex !important;
+        }
       </style>
       <nav class="navbar shadow-lg">
         <div class="container mx-auto px-12 py-8">
@@ -68,14 +72,6 @@ class CustomNavbar extends HTMLElement {
     // Initialize icons using global feather
     if (window.feather) {
       window.feather.replace(null, this);
-    }
-
-    // If explicit attribute exists, show the auth section
-    if (this.hasAttribute('show-auth')) {
-      const authSection = this.querySelector('#auth-section');
-      if (authSection) {
-        authSection.style.display = 'flex';
-      }
     }
   }
 
