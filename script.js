@@ -435,7 +435,7 @@ function addPinToMap(pin) {
             <p class="text-sm">${safeDesc}</p>
             <p class="text-xs text-gray-500 mt-1">Posted: ${safeDate}</p>
             ${currentUser && currentUser.id === pin.user_id ?
-            `<button onclick="deletePin(${pin.id})" class="mt-2 w-full bg-red-100 hover:bg-red-200 text-red-600 text-xs py-1 px-2 rounded transition-colors">
+            `<button onclick="deletePin(${pin.id})" class="mt-2 w-full bg-orange-100 hover:bg-orange-200 text-[#F87342] text-xs py-1 px-2 rounded transition-colors">
                     <i data-feather="trash-2" class="w-3 h-3 inline"></i> Delete Pin
                  </button>` : ''}
         </div>
@@ -480,11 +480,11 @@ function addPinToList(pin) {
                     <span>${safeDate}</span>
                 </div>
                 <div class="flex items-center gap-4 mt-2">
-                    <button onclick="focusOnPin(${pin.id})" class="text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center transition-colors">
+                    <button onclick="focusOnPin(${pin.id})" class="text-[#957FFD] hover:text-[#7C66E3] text-sm flex items-center transition-colors">
                         <i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
                     </button>
                     ${currentUser && currentUser.id === pin.user_id ?
-            `<button onclick="deletePin(${pin.id})" class="text-red-500 hover:text-red-700 text-sm flex items-center transition-colors">
+            `<button onclick="deletePin(${pin.id})" class="text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center transition-colors">
                         <i data-feather="trash-2" class="w-4 h-4 mr-1"></i> Delete
                      </button>` : ''}
                 </div>
