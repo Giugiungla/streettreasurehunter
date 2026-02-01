@@ -189,6 +189,12 @@ function setupForm() {
             let photoUrl = null;
             if (photoInput.files.length > 0) {
                 const file = photoInput.files[0];
+
+                // File validation
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    throw new Error('Image size too large. Please choose an image under 5MB.');
+                }
+
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}.${fileExt}`;
                 const filePath = `${currentUser.id}/${fileName}`;
@@ -272,6 +278,9 @@ async function fetchPins() {
     // Clear list
     container.innerHTML = '';
 
+    // Reset marker cache
+    window.pinMarkers = {};
+
     // Clear map markers (except current selection)
     if (window.map) {
         window.map.eachLayer((layer) => {
@@ -305,7 +314,9 @@ async function fetchPins() {
             latitude: pin.latitude,
             longitude: pin.longitude,
             photo: pin.photo_url,
-            date: new Date(pin.created_at).toLocaleDateString()
+            photo: pin.photo_url,
+            date: new Date(pin.created_at).toLocaleDateString(),
+            user_id: pin.user_id
         };
 
         addPinToMap(displayPin);
@@ -336,8 +347,11 @@ function setupAuth() {
     window.supabaseClient.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user;
         updateAuthUI();
+        // Re-fetch pins to update UI (e.g., Delete buttons) based on new auth state
+        fetchPins();
     });
 }
+
 
 function updateAuthUI() {
     const navbar = document.querySelector('custom-navbar');
@@ -362,7 +376,12 @@ async function signIn() {
 
     if (error) {
         console.error('SignIn Error:', error);
-        alert('Error sending magic link: ' + error.message);
+
+        if (error.message.includes('rate limit') || error.status === 429) {
+            alert('Too many login attempts. Please wait 60 seconds before trying again.\n\nTip: You may have already received a login link. Check your inbox!');
+        } else {
+            alert('Error sending magic link: ' + error.message);
+        }
     } else {
         alert('Magic link sent to ' + email + '!\nCheck your spam folder.');
     }
@@ -409,6 +428,10 @@ function addPinToMap(pin) {
             ${pin.photo ? `<img src="${pin.photo}" class="w-full h-32 object-cover mb-2 rounded" alt="Treasure photo">` : ''}
             <p class="text-sm">${safeDesc}</p>
             <p class="text-xs text-gray-500 mt-1">Posted: ${safeDate}</p>
+            ${currentUser && currentUser.id === pin.user_id ?
+            `<button onclick="deletePin(${pin.id})" class="mt-2 w-full bg-red-100 hover:bg-red-200 text-red-600 text-xs py-1 px-2 rounded transition-colors">
+                    <i data-feather="trash-2" class="w-3 h-3 inline"></i> Delete Pin
+                 </button>` : ''}
         </div>
     `;
 
@@ -416,6 +439,10 @@ function addPinToMap(pin) {
         .bindPopup(popupContent);
 
     pin.marker = marker;
+
+    // Store in global map for easy access
+    if (!window.pinMarkers) window.pinMarkers = {};
+    window.pinMarkers[pin.id] = marker;
 }
 
 function addPinToList(pin) {
@@ -446,23 +473,62 @@ function addPinToList(pin) {
                     <i data-feather="calendar" class="w-4 h-4 mr-1"></i>
                     <span>${safeDate}</span>
                 </div>
-                <button onclick="focusOnPin(${pin.id})" class="mt-2 text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center">
-                    <i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
-                </button>
+                <div class="flex items-center gap-4 mt-2">
+                    <button onclick="focusOnPin(${pin.id})" class="text-[#F87342] hover:text-[#F2B8A2] text-sm flex items-center transition-colors">
+                        <i data-feather="eye" class="w-4 h-4 mr-1"></i> View on map
+                    </button>
+                    ${currentUser && currentUser.id === pin.user_id ?
+            `<button onclick="deletePin(${pin.id})" class="text-red-500 hover:text-red-700 text-sm flex items-center transition-colors">
+                        <i data-feather="trash-2" class="w-4 h-4 mr-1"></i> Delete
+                     </button>` : ''}
+                </div>
             </div>
         </div>
     `;
+    // Removed absolute positioning class
+    // pinElement.classList.add('relative');
     pinsContainer.append(pinElement);
     feather.replace();
 }
 
+window.deletePin = async function (id) {
+    if (!confirm('Are you sure you want to delete this treasure? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('pins')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh UI
+        await fetchPins();
+        alert('Treasure deleted successfully.');
+
+    } catch (err) {
+        console.error('Error deleting pin:', err);
+        alert('Failed to delete pin: ' + err.message);
+    }
+}
+
 // Make globally available
 window.focusOnPin = function (pinId) {
-    // In a real app we'd map ID to marker. For now just alert.
-    alert('Focusing logic would go here for pin: ' + pinId);
-    // Ideally:
-    // const marker = markersMap[pinId];
-    // if(marker) map.setView(marker.getLatLng(), 15); marker.openPopup();
+    if (!window.map || !window.pinMarkers) return;
+
+    const marker = window.pinMarkers[pinId];
+    if (marker) {
+        // Pan to marker and open popup
+        window.map.setView(marker.getLatLng(), 15);
+        marker.openPopup();
+
+        // Scroll to top on mobile
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        console.warn('Marker not found for pin:', pinId);
+    }
 }
 window.openModal = openModal;
 window.closeModal = closeModal;
